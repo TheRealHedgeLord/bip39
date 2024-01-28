@@ -29,7 +29,7 @@ class Seed:
             random_seed = [random.randint(0, 2048) for _ in range(23)]
             self.seed = random_seed + [checksum(random_seed)]
         elif checksum(seed[0:-1]) != seed[-1]:
-            raise Exception("checksum failed")
+            raise Exception("invalid checksum")
         else:
             self.seed = seed
 
