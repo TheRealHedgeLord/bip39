@@ -47,7 +47,7 @@ class Seed:
             self.seed = seed
 
     @cache
-    def digest(self, language: Language = Language.english) -> str:
+    def words(self, language: Language = Language.english) -> str:
         return " ".join([_DIGEST[language][i] for i in self.seed])
 
     def create_shadow_seed(
