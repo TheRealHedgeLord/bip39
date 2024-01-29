@@ -1,70 +1,63 @@
+from __future__ import annotations
+
 import json
 import random
 import hashlib
 
 from functools import cache
-from typing import List, Dict
+from typing import List
 from enum import StrEnum
 
-
-class Language(StrEnum):
-    english = "english"
-
-
-_DIGEST: Dict[str, List[str]] = {}
-
-
-with open("./english.json", mode="r") as f:
-    _DIGEST[Language.english] = json.load(f)
+from lang import Lang, seed_to_words
 
 
 @cache
-def checksum(bits: str) -> List[int]:
-    if len(bits) != 256:
+def checksum(bits256: str) -> List[int]:
+    if len(bits256) != 256:
         raise Exception("invalid bit length")
     checksum_hex = hashlib.sha256(
-        int(bits, 2).to_bytes(length=32, byteorder="big", signed=False)
+        int(bits256, 2).to_bytes(length=32, byteorder="big", signed=False)
     ).hexdigest()[0:2]
-    complete_seed_bits = bits + "{0:08b}".format(int(checksum_hex, 16))
+    complete_seed_bits = bits256 + "{0:08b}".format(int(checksum_hex, 16))
     return [int(complete_seed_bits[i * 11 : i * 11 + 11], 2) for i in range(24)]
 
 
-class Seed:
-    def __init__(self, seed: List[int] | None = None) -> None:
-        if not seed:
-            random_256_bits = "{0:0256b}".format(random.randint(0, 2**256 - 1))
-            self.bytes = int(random_256_bits, 2).to_bytes(
-                length=32, byteorder="big", signed=False
-            )
-            self.seed = checksum(random_256_bits)
+class Wallet:
+    _instances = {}
+
+    @staticmethod
+    def new() -> Wallet:
+        return Wallet(random.randint(0, 2**256 - 1))
+
+    @staticmethod
+    def from_seed(seed: List[int]) -> Wallet:
+        bits256 = ("".join(["{0:011b}".format(i) for i in seed]))[0:256]
+        if checksum(bits256) != seed:
+            raise Exception("invalid checksum")
+        uint256 = int(bits256, 2)
+        if uint256 in Wallet._instances:
+            return Wallet._instances[uint256]
         else:
-            bits_256 = ("".join(["{0:011b}".format(i) for i in seed]))[0:256]
-            if checksum(bits_256) != seed:
-                raise Exception("invalid checksum")
-            self.bytes = int(bits_256, 2).to_bytes(
-                length=32, byteorder="big", signed=False
-            )
-            self.seed = seed
+            return Wallet(uint256)
+
+    def __init__(self, uint256: int) -> None:
+        if uint256 in Wallet._instances:
+            raise Exception("duplication error")
+        Wallet._instances[uint256] = self
+        self.bytes = uint256.to_bytes(length=32, byteorder="big", signed=False)
+        self.seed = checksum("{0:0256b}".format(uint256))
 
     @cache
-    def words(self, language: Language = Language.english) -> str:
-        return " ".join([_DIGEST[language][i] for i in self.seed])
+    def words(self, lang: Lang = Lang.English) -> str:
+        return seed_to_words(self.seed, lang)
 
-    def create_shadow_seed(
-        self, passphrase: str, language: Language | None = None
-    ) -> List[int] | str:
+    def create_shadow_wallet(self, passphrase: str) -> Wallet:
         suffix = hashlib.sha256(passphrase.encode("utf-8")).digest()
         shadow_seed_bytes = hashlib.sha256(self.bytes + suffix).digest()
-        shadow_seed_bits = "{0:0256b}".format(
-            int.from_bytes(shadow_seed_bytes, byteorder="big", signed=False)
+        shadow_seed_uint256 = int.from_bytes(
+            shadow_seed_bytes, byteorder="big", signed=False
         )
-        shadow_seed = checksum(shadow_seed_bits)
-        return (
-            shadow_seed
-            if not language
-            else " ".join([_DIGEST[language][i] for i in shadow_seed])
-        )
-
-
-if __name__ == "__main__":
-    pass
+        if shadow_seed_uint256 in Wallet._instances:
+            return Wallet._instances[shadow_seed_uint256]
+        else:
+            return Wallet(shadow_seed_uint256)
