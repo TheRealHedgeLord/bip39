@@ -6,7 +6,7 @@ from typing import List
 
 _LANG = {}
 
-for file_name in os.listdir("./wordlist/"):
+for file_name in os.listdir("./wordlists/"):
     if file_name[-5::] == ".json":
         with open(f"./wordlists/{file_name}", mode="r") as f:
             _LANG[file_name[0:-5]] = json.load(f)
