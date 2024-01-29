@@ -25,7 +25,8 @@ class Wallet:
 
     @staticmethod
     def new() -> Wallet:
-        return Wallet(random.randint(0, 2**256 - 1))
+        random_uint256 = random.randint(0, 2**256 - 1)
+        return Wallet._create_instance(random_uint256)
 
     @staticmethod
     def from_seed(seed: List[int]) -> Wallet:
@@ -33,6 +34,13 @@ class Wallet:
         if checksum(bits256) != seed:
             raise Exception("invalid checksum")
         uint256 = int(bits256, 2)
+        if uint256 in Wallet._instances:
+            return Wallet._instances[uint256]
+        else:
+            return Wallet(uint256)
+
+    @staticmethod
+    def _create_instance(uint256: int) -> Wallet:
         if uint256 in Wallet._instances:
             return Wallet._instances[uint256]
         else:
@@ -55,7 +63,4 @@ class Wallet:
         shadow_seed_uint256 = int.from_bytes(
             shadow_seed_bytes, byteorder="big", signed=False
         )
-        if shadow_seed_uint256 in Wallet._instances:
-            return Wallet._instances[shadow_seed_uint256]
-        else:
-            return Wallet(shadow_seed_uint256)
+        return Wallet._create_instance(shadow_seed_uint256)
