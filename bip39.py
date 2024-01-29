@@ -2,7 +2,7 @@ import json
 import random
 import hashlib
 
-from functools import cache, cached_property
+from functools import cache
 from typing import List, Dict
 from enum import StrEnum
 
@@ -33,17 +33,18 @@ class Seed:
     def __init__(self, seed: List[int] | None = None) -> None:
         if not seed:
             random_256_bits = "{0:0256b}".format(random.randint(0, 2**256 - 1))
+            self.bytes = int(random_256_bits, 2).to_bytes(
+                length=32, byteorder="big", signed=False
+            )
             self.seed = checksum(random_256_bits)
         else:
-            bits = "".join(["{0:011b}".format(i) for i in seed])
-            if checksum(bits[0:256]) != seed:
+            bits_256 = ("".join(["{0:011b}".format(i) for i in seed]))[0:256]
+            if checksum(bits_256) != seed:
                 raise Exception("invalid checksum")
+            self.bytes = int(bits_256, 2).to_bytes(
+                length=32, byteorder="big", signed=False
+            )
             self.seed = seed
-
-    @cached_property
-    def bytes(self):
-        binary = "".join(["{0:011b}".format(i) for i in self.seed])
-        return int(binary, 2).to_bytes(length=33, byteorder="big", signed=False)
 
     @cache
     def digest(self, language: Language = Language.english) -> str:
