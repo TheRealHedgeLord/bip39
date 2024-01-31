@@ -6,7 +6,7 @@ import hashlib
 from functools import cache
 from typing import List
 
-from lang import Lang, seed_to_words
+from lang import Lang, seed_to_words, words_to_seed
 
 
 @cache
@@ -29,8 +29,13 @@ class Wallet:
         return Wallet._create_instance(random_uint256)
 
     @staticmethod
-    def from_seed(seed: List[int]) -> Wallet:
-        bits256 = ("".join(["{0:011b}".format(i) for i in seed]))[0:256]
+    def from_seed(seed: List[int] | str, lang: Lang = Lang.English) -> Wallet:
+        if type(seed) == str:
+            bits256 = (
+                "".join(["{0:011b}".format(i) for i in words_to_seed(seed, lang)])
+            )[0:256]
+        else:
+            bits256 = ("".join(["{0:011b}".format(i) for i in seed]))[0:256]
         if checksum(bits256) != seed:
             raise Exception("invalid checksum")
         uint256 = int(bits256, 2)
